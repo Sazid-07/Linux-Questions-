@@ -1,0 +1,99 @@
+Perfect, Buddy 👍 Here’s your **compact revision note** — everything about **`df -h` hang issue and /proc usage** summarized real-time admin style 👇
+
+---
+
+## 🧭 **Quick Revision: Troubleshooting `df -h` Hanging**
+
+### 🔹 Common Reason
+
+* `df -h` hangs mostly because of **unreachable or stale mounts** — especially **NFS, CIFS, or FUSE**.
+* It happens when the filesystem listed in `/etc/fstab` or `/proc/mounts` is **not responding**.
+
+---
+
+### 🔹 Safe Alternatives to `df -h`
+
+Use these when `df -h` hangs:
+
+```bash
+cat /proc/mounts
+# or
+cat /etc/mtab
+```
+
+➡ These files show the currently mounted filesystems directly from the kernel (no network access), so they **don’t hang**.
+
+---
+
+### 🔹 Identify Problematic Filesystem Using `strace`
+
+```bash
+strace df -h
+```
+
+✅ **What to look for:**
+
+* The **last path** before `strace` stops or hangs = the **problematic mount**
+  e.g.
+
+  ```
+  stat("/mnt/nfsdata", <hangs here>)
+  ```
+
+  → `/mnt/nfsdata` is the faulty mount.
+
+---
+
+### 🔹 Confirm and Fix Steps
+
+1. **Check mount list**
+
+   ```bash
+   mount | grep nfs
+   ```
+2. **Try to unmount**
+
+   ```bash
+   umount -f /mnt/nfsdata
+   # or
+   umount -l /mnt/nfsdata
+   ```
+3. **Check NFS server**
+
+   ```bash
+   ping <NFS-server-IP>
+   showmount -e <NFS-server-IP>
+   ```
+
+---
+
+### 🔹 Find Which Process Is Using That Mount
+
+```bash
+lsof /mnt/nfsdata
+fuser -mv /mnt/nfsdata
+```
+
+---
+
+### 🔹 Important Files for Reference
+
+| File           | Purpose                                        |
+| -------------- | ---------------------------------------------- |
+| `/proc/mounts` | Live list of mounted filesystems (kernel view) |
+| `/etc/mtab`    | Usually a symlink to `/proc/mounts`            |
+| `/etc/fstab`   | Mount configuration for boot-time mounts       |
+
+---
+
+### 🧠 **Admin Key Points**
+
+* Always trust `/proc/mounts` over `df -h` when it hangs.
+* `strace df -h` → best way to trace the exact mount causing the issue.
+* NFS is the **most common** reason for df hanging.
+* Use `umount -l` for lazy unmount if forced unmount fails.
+* Always verify network reachability before remounting.
+
+---
+
+Would you like me to make this into a **one-page PDF cheat sheet** (for your Linux interview notes folder)?
